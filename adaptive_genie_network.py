@@ -20,6 +20,11 @@ from abc import ABC, abstractmethod
 import time
 from collections import deque
 
+from exceptions import (
+    ValidationError, InvalidBoundsError, InvalidParameterError,
+    NegotiationError, VisualizationError, NumericError, DimensionMismatchError
+)
+
 
 @dataclass
 class ComplexityMeasure:
@@ -53,14 +58,26 @@ class Agent(ABC):
 
 class PopulationAgent(Agent):
     """Self-adjusting swarm size agent that breathes with complexity"""
-    
-    def __init__(self):
+
+    def __init__(self, min_size: int = 10, max_size: int = 500,
+                 breathing_rate: float = 0.1, oscillation_amplitude: float = 0.3):
         super().__init__("PopulationAgent")
-        self.size = 50
-        self.min_size = 10
-        self.max_size = 500
-        self.breathing_rate = 0.1
-        self.oscillation_amplitude = 0.3
+
+        # Validate parameters
+        if min_size < 1:
+            raise InvalidParameterError(f"min_size must be >= 1, got {min_size}")
+        if max_size < min_size:
+            raise InvalidParameterError(f"max_size ({max_size}) must be >= min_size ({min_size})")
+        if breathing_rate <= 0:
+            raise InvalidParameterError(f"breathing_rate must be > 0, got {breathing_rate}")
+        if not 0 <= oscillation_amplitude <= 1:
+            raise InvalidParameterError(f"oscillation_amplitude must be in [0, 1], got {oscillation_amplitude}")
+
+        self.size = min(max(50, min_size), max_size)
+        self.min_size = min_size
+        self.max_size = max_size
+        self.breathing_rate = breathing_rate
+        self.oscillation_amplitude = oscillation_amplitude
         
     def oscillate(self, exploration_need: float, convergence_pressure: float) -> int:
         """Population breathes with complexity through oscillation"""
@@ -108,21 +125,35 @@ class RhythmAgent(Agent):
         """Detect when a natural cycle has completed"""
         if len(self.cycle_detector) < 10:
             return False
-            
-        # Analyze rhythm patterns using autocorrelation
-        signal = np.array(list(self.cycle_detector))
-        autocorr = np.correlate(signal, signal, mode='full')
-        autocorr = autocorr[autocorr.size // 2:]
-        
-        # Find dominant frequency
-        if len(autocorr) > 1:
-            peak_idx = np.argmax(autocorr[1:]) + 1
-            if peak_idx > 0:
-                self.natural_frequency = 2 * np.pi / peak_idx
-        
-        # Check for cycle completion
-        cycle_strength = np.max(autocorr[1:]) / autocorr[0] if autocorr[0] > 0 else 0
-        return cycle_strength > self.cycle_completion_threshold
+
+        try:
+            # Analyze rhythm patterns using autocorrelation
+            signal = np.array(list(self.cycle_detector))
+
+            # Handle constant signals
+            if np.std(signal) < 1e-10:
+                return False
+
+            autocorr = np.correlate(signal, signal, mode='full')
+            autocorr = autocorr[autocorr.size // 2:]
+
+            # Find dominant frequency
+            if len(autocorr) > 1:
+                peak_idx = np.argmax(autocorr[1:]) + 1
+                if peak_idx > 0:
+                    self.natural_frequency = 2 * np.pi / peak_idx
+
+            # Check for cycle completion (prevent division by zero)
+            if autocorr[0] > 1e-10 and len(autocorr) > 1:
+                cycle_strength = np.max(autocorr[1:]) / autocorr[0]
+            else:
+                cycle_strength = 0.0
+
+            return cycle_strength > self.cycle_completion_threshold
+
+        except (ValueError, FloatingPointError) as e:
+            # If numeric errors occur, assume cycle not complete
+            return False
     
     def negotiate(self, context: Dict) -> Dict:
         """Negotiate iteration rhythm based on natural cycles"""
@@ -168,13 +199,22 @@ class ResonanceAgent(Agent):
         
         return self.resonance_frequency
     
-    def measure_crystallization(self, population_diversity: float, 
+    def measure_crystallization(self, population_diversity: float,
                               fitness_variance: float) -> float:
         """Measure how crystallized the solution has become"""
-        # Crystallization occurs when diversity decreases and fitness stabilizes
-        crystallization = (1.0 - population_diversity) * (1.0 / (1.0 + fitness_variance))
-        self.crystallization_detector.append(crystallization)
-        return crystallization
+        # Validate inputs
+        if not 0 <= population_diversity <= 1:
+            raise InvalidParameterError(f"population_diversity must be in [0, 1], got {population_diversity}")
+        if fitness_variance < 0:
+            raise InvalidParameterError(f"fitness_variance must be >= 0, got {fitness_variance}")
+
+        try:
+            # Crystallization occurs when diversity decreases and fitness stabilizes
+            crystallization = (1.0 - population_diversity) * (1.0 / (1.0 + fitness_variance))
+            self.crystallization_detector.append(crystallization)
+            return crystallization
+        except (ValueError, FloatingPointError) as e:
+            raise NumericError(f"Failed to compute crystallization: {e}")
     
     def negotiate(self, context: Dict) -> Dict:
         """Negotiate convergence through resonance detection"""
@@ -207,59 +247,101 @@ class GradientField:
         
     def generate_gradients(self, problem_landscape: Dict):
         """Generate dynamic gradient fields for the problem landscape"""
+        # Validate problem_landscape
+        if not isinstance(problem_landscape, dict):
+            raise ValidationError(f"problem_landscape must be a dict, got {type(problem_landscape)}")
+
         dimensions = problem_landscape.get('dimensions', 2)
+        if not isinstance(dimensions, int) or dimensions < 1:
+            raise InvalidParameterError(f"dimensions must be a positive integer, got {dimensions}")
+
         bounds = problem_landscape.get('bounds', [(-10, 10)] * dimensions)
-        
-        # Create gradient field mesh
-        resolution = 50
-        self.topology_map = {}
-        
-        for dim in range(dimensions):
-            lower, upper = bounds[dim]
-            coords = np.linspace(lower, upper, resolution)
-            self.topology_map[f'dim_{dim}'] = coords
-            
-            # Generate flow vectors based on problem characteristics
-            gradient = np.gradient(coords)
-            self.gradients[f'dim_{dim}'] = gradient
-            
-            # Flow vectors point toward optimal regions
-            flow = -gradient / (np.linalg.norm(gradient) + 1e-8)
-            self.flow_vectors[f'dim_{dim}'] = flow
+        if not isinstance(bounds, list) or len(bounds) != dimensions:
+            raise InvalidBoundsError(f"bounds must be a list of length {dimensions}, got {len(bounds) if isinstance(bounds, list) else 'non-list'}")
+
+        # Validate each bound
+        for i, bound in enumerate(bounds):
+            if not isinstance(bound, (tuple, list)) or len(bound) != 2:
+                raise InvalidBoundsError(f"bounds[{i}] must be a tuple/list of 2 values, got {bound}")
+            lower, upper = bound
+            if not isinstance(lower, (int, float)) or not isinstance(upper, (int, float)):
+                raise InvalidBoundsError(f"bounds[{i}] values must be numeric, got ({lower}, {upper})")
+            if lower >= upper:
+                raise InvalidBoundsError(f"bounds[{i}] lower ({lower}) must be < upper ({upper})")
+
+        try:
+            # Create gradient field mesh
+            resolution = 50
+            self.topology_map = {}
+
+            for dim in range(dimensions):
+                lower, upper = bounds[dim]
+                coords = np.linspace(lower, upper, resolution)
+                self.topology_map[f'dim_{dim}'] = coords
+
+                # Generate flow vectors based on problem characteristics
+                gradient = np.gradient(coords)
+                self.gradients[f'dim_{dim}'] = gradient
+
+                # Flow vectors point toward optimal regions
+                gradient_norm = np.linalg.norm(gradient)
+                if gradient_norm > 1e-10:
+                    flow = -gradient / gradient_norm
+                else:
+                    flow = np.zeros_like(gradient)
+                self.flow_vectors[f'dim_{dim}'] = flow
+
+        except Exception as e:
+            raise NumericError(f"Failed to generate gradients: {e}")
     
     def get_field_strength_at(self, position: np.ndarray) -> float:
         """Get field strength at a specific position"""
+        if not isinstance(position, np.ndarray):
+            raise ValidationError(f"position must be a numpy array, got {type(position)}")
+
         if not self.gradients:
             return self.field_strength
-            
-        # Calculate field strength based on position in topology
-        strength = 0.0
-        for dim, pos in enumerate(position):
-            if f'dim_{dim}' in self.gradients:
-                # Interpolate field strength
-                coords = self.topology_map[f'dim_{dim}']
-                idx = np.searchsorted(coords, pos)
-                idx = np.clip(idx, 0, len(coords) - 1)
-                strength += abs(self.gradients[f'dim_{dim}'][idx])
-        
-        return strength / len(position)
+
+        try:
+            # Calculate field strength based on position in topology
+            strength = 0.0
+            for dim, pos in enumerate(position):
+                if f'dim_{dim}' in self.gradients:
+                    # Interpolate field strength
+                    coords = self.topology_map[f'dim_{dim}']
+                    idx = np.searchsorted(coords, pos)
+                    idx = np.clip(idx, 0, len(coords) - 1)
+                    strength += abs(self.gradients[f'dim_{dim}'][idx])
+
+            return strength / max(1, len(position))
+        except Exception as e:
+            raise NumericError(f"Failed to compute field strength: {e}")
     
     def apply_field_force(self, position: np.ndarray, velocity: np.ndarray) -> np.ndarray:
         """Apply field force to modify particle movement"""
+        if not isinstance(position, np.ndarray) or not isinstance(velocity, np.ndarray):
+            raise ValidationError(f"position and velocity must be numpy arrays")
+
+        if position.shape != velocity.shape:
+            raise DimensionMismatchError(f"position shape {position.shape} != velocity shape {velocity.shape}")
+
         if not self.flow_vectors:
             return velocity
-            
-        field_force = np.zeros_like(position)
-        for dim, pos in enumerate(position):
-            if f'dim_{dim}' in self.flow_vectors:
-                coords = self.topology_map[f'dim_{dim}']
-                idx = np.searchsorted(coords, pos)
-                idx = np.clip(idx, 0, len(coords) - 1)
-                field_force[dim] = self.flow_vectors[f'dim_{dim}'][idx]
-        
-        # Blend field force with current velocity
-        field_strength = self.get_field_strength_at(position)
-        return velocity + field_strength * field_force
+
+        try:
+            field_force = np.zeros_like(position)
+            for dim, pos in enumerate(position):
+                if f'dim_{dim}' in self.flow_vectors:
+                    coords = self.topology_map[f'dim_{dim}']
+                    idx = np.searchsorted(coords, pos)
+                    idx = np.clip(idx, 0, len(coords) - 1)
+                    field_force[dim] = self.flow_vectors[f'dim_{dim}'][idx]
+
+            # Blend field force with current velocity
+            field_strength = self.get_field_strength_at(position)
+            return velocity + field_strength * field_force
+        except Exception as e:
+            raise NumericError(f"Failed to apply field force: {e}")
 
 
 class AdaptiveGenieNetwork:
@@ -413,81 +495,89 @@ class AdaptiveGenieNetwork:
     def visualize_system_dynamics(self, save_path: str = None):
         """Visualize the evolution of system dynamics"""
         if not self.negotiation_history:
-            print("No negotiation history to visualize")
-            return
-            
-        fig, axes = plt.subplots(2, 3, figsize=(15, 10))
-        fig.suptitle('AdaptiveGenieNetwork System Dynamics', fontsize=16)
-        
-        timestamps = [entry['timestamp'] for entry in self.negotiation_history]
-        start_time = timestamps[0]
-        relative_times = [(t - start_time) for t in timestamps]
-        
-        # Population dynamics
-        pop_sizes = [entry['proposals']['population']['population_size'] 
-                    for entry in self.negotiation_history]
-        axes[0, 0].plot(relative_times, pop_sizes, 'b-', linewidth=2)
-        axes[0, 0].set_title('Population Breathing')
-        axes[0, 0].set_ylabel('Population Size')
-        axes[0, 0].grid(True, alpha=0.3)
-        
-        # Rhythm dynamics
-        frequencies = [entry['proposals']['rhythm']['natural_frequency'] 
-                      for entry in self.negotiation_history]
-        axes[0, 1].plot(relative_times, frequencies, 'g-', linewidth=2)
-        axes[0, 1].set_title('Natural Rhythm')
-        axes[0, 1].set_ylabel('Frequency')
-        axes[0, 1].grid(True, alpha=0.3)
-        
-        # Crystallization
-        crystallization = [entry['proposals']['resonance']['crystallization_level'] 
+            raise VisualizationError("No negotiation history to visualize")
+
+        try:
+            fig, axes = plt.subplots(2, 3, figsize=(15, 10))
+            fig.suptitle('AdaptiveGenieNetwork System Dynamics', fontsize=16)
+
+            timestamps = [entry['timestamp'] for entry in self.negotiation_history]
+            start_time = timestamps[0]
+            relative_times = [(t - start_time) for t in timestamps]
+
+            # Population dynamics
+            pop_sizes = [entry['proposals']['population']['population_size']
+                        for entry in self.negotiation_history]
+            axes[0, 0].plot(relative_times, pop_sizes, 'b-', linewidth=2)
+            axes[0, 0].set_title('Population Breathing')
+            axes[0, 0].set_ylabel('Population Size')
+            axes[0, 0].grid(True, alpha=0.3)
+
+            # Rhythm dynamics
+            frequencies = [entry['proposals']['rhythm']['natural_frequency']
                           for entry in self.negotiation_history]
-        axes[0, 2].plot(relative_times, crystallization, 'r-', linewidth=2)
-        axes[0, 2].set_title('Solution Crystallization')
-        axes[0, 2].set_ylabel('Crystallization Level')
-        axes[0, 2].grid(True, alpha=0.3)
+            axes[0, 1].plot(relative_times, frequencies, 'g-', linewidth=2)
+            axes[0, 1].set_title('Natural Rhythm')
+            axes[0, 1].set_ylabel('Frequency')
+            axes[0, 1].grid(True, alpha=0.3)
+
+            # Crystallization
+            crystallization = [entry['proposals']['resonance']['crystallization_level']
+                              for entry in self.negotiation_history]
+            axes[0, 2].plot(relative_times, crystallization, 'r-', linewidth=2)
+            axes[0, 2].set_title('Solution Crystallization')
+            axes[0, 2].set_ylabel('Crystallization Level')
+            axes[0, 2].grid(True, alpha=0.3)
+
+            # System energy
+            energies = [entry['synthesis']['system_energy']
+                       for entry in self.negotiation_history]
+            axes[1, 0].plot(relative_times, energies, 'm-', linewidth=2)
+            axes[1, 0].set_title('System Energy')
+            axes[1, 0].set_ylabel('Energy Level')
+            axes[1, 0].grid(True, alpha=0.3)
+
+            # Dialectical tension
+            tensions = [entry['complexity'].dialectical_tension
+                       for entry in self.negotiation_history]
+            axes[1, 1].plot(relative_times, tensions, 'orange', linewidth=2)
+            axes[1, 1].set_title('Dialectical Tension')
+            axes[1, 1].set_ylabel('Tension Level')
+            axes[1, 1].grid(True, alpha=0.3)
+
+            # Collective consciousness
+            consciousness_history = []
+            temp_consciousness = 0.5
+            for entry in self.negotiation_history:
+                harmony = entry['proposals']['resonance']['harmony_level']
+                energy = entry['synthesis']['system_energy']
+                consciousness_delta = 0.01 * (harmony + energy - 1.0)
+                temp_consciousness = np.clip(temp_consciousness + consciousness_delta, 0.0, 1.0)
+                consciousness_history.append(temp_consciousness)
+
+            axes[1, 2].plot(relative_times, consciousness_history, 'purple', linewidth=2)
+            axes[1, 2].set_title('Collective Consciousness')
+            axes[1, 2].set_ylabel('Consciousness Level')
+            axes[1, 2].grid(True, alpha=0.3)
         
-        # System energy
-        energies = [entry['synthesis']['system_energy'] 
-                   for entry in self.negotiation_history]
-        axes[1, 0].plot(relative_times, energies, 'm-', linewidth=2)
-        axes[1, 0].set_title('System Energy')
-        axes[1, 0].set_ylabel('Energy Level')
-        axes[1, 0].grid(True, alpha=0.3)
-        
-        # Dialectical tension
-        tensions = [entry['complexity'].dialectical_tension 
-                   for entry in self.negotiation_history]
-        axes[1, 1].plot(relative_times, tensions, 'orange', linewidth=2)
-        axes[1, 1].set_title('Dialectical Tension')
-        axes[1, 1].set_ylabel('Tension Level')
-        axes[1, 1].grid(True, alpha=0.3)
-        
-        # Collective consciousness
-        consciousness_history = []
-        temp_consciousness = 0.5
-        for entry in self.negotiation_history:
-            harmony = entry['proposals']['resonance']['harmony_level']
-            energy = entry['synthesis']['system_energy']
-            consciousness_delta = 0.01 * (harmony + energy - 1.0)
-            temp_consciousness = np.clip(temp_consciousness + consciousness_delta, 0.0, 1.0)
-            consciousness_history.append(temp_consciousness)
-        
-        axes[1, 2].plot(relative_times, consciousness_history, 'purple', linewidth=2)
-        axes[1, 2].set_title('Collective Consciousness')
-        axes[1, 2].set_ylabel('Consciousness Level')
-        axes[1, 2].grid(True, alpha=0.3)
-        
-        # Set common x-label
-        for ax in axes[1, :]:
-            ax.set_xlabel('Time (seconds)')
-        
-        plt.tight_layout()
-        
-        if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        
-        return fig
+            # Set common x-label
+            for ax in axes[1, :]:
+                ax.set_xlabel('Time (seconds)')
+
+            plt.tight_layout()
+
+            if save_path:
+                try:
+                    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+                except Exception as e:
+                    raise VisualizationError(f"Failed to save visualization to {save_path}: {e}")
+
+            return fig
+
+        except Exception as e:
+            if isinstance(e, VisualizationError):
+                raise
+            raise VisualizationError(f"Failed to create visualization: {e}")
 
 
 if __name__ == "__main__":

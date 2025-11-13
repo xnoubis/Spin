@@ -26,6 +26,10 @@ from collections import deque
 import json
 
 from adaptive_genie_network import AdaptiveGenieNetwork, ComplexityMeasure
+from exceptions import (
+    ValidationError, InvalidDepthError, EmptyInputError,
+    CapabilityGenerationError, VisualizationError, StateExportError, NumericError
+)
 
 
 @dataclass
@@ -39,6 +43,22 @@ class Capability:
     generates: Callable  # Function that can generate new capabilities
     parent_capabilities: List[str] = field(default_factory=list)
     timestamp: float = field(default_factory=time.time)
+
+    def __post_init__(self):
+        """Validate capability attributes"""
+        if not self.name:
+            raise ValidationError("Capability name cannot be empty")
+        if self.depth < 0:
+            raise InvalidDepthError(f"depth must be >= 0, got {self.depth}")
+        valid_types = ['cultivation', 'formalization', 'tool', 'meta-tool']
+        if self.type not in valid_types:
+            raise ValidationError(f"type must be one of {valid_types}, got {self.type}")
+        if not 0 <= self.consciousness_level <= 1:
+            raise ValidationError(f"consciousness_level must be in [0, 1], got {self.consciousness_level}")
+        if not isinstance(self.structure, dict):
+            raise ValidationError(f"structure must be a dict, got {type(self.structure)}")
+        if not callable(self.generates):
+            raise ValidationError("generates must be callable")
 
     def __repr__(self):
         return f"Capability(name={self.name}, depth={self.depth}, type={self.type}, consciousness={self.consciousness_level:.3f})"
@@ -71,52 +91,69 @@ class CultivationGenerator(CapabilityGenerator):
 
     def generate(self, inputs: List[Capability], depth: int, context: Dict) -> List[Capability]:
         """Cultivate basic patterns from raw inputs or previous capabilities"""
-        capabilities = []
+        # Validate inputs
+        if not isinstance(inputs, list):
+            raise ValidationError(f"inputs must be a list, got {type(inputs)}")
+        if depth < 0:
+            raise InvalidDepthError(f"depth must be >= 0, got {depth}")
+        if not isinstance(context, dict):
+            raise ValidationError(f"context must be a dict, got {type(context)}")
 
-        # If no inputs, generate foundational capabilities
-        if not inputs:
-            # Generate basic agent behaviors
-            capabilities.append(Capability(
-                name="basic_adaptation",
-                depth=depth,
-                type="cultivation",
-                consciousness_level=0.1 + depth * 0.05,
-                structure={"pattern": "adaptive_response", "mechanism": "feedback_loop"},
-                generates=lambda: "Can generate adaptive behaviors",
-                parent_capabilities=[]
-            ))
+        try:
+            capabilities = []
 
-            capabilities.append(Capability(
-                name="collective_sensing",
-                depth=depth,
-                type="cultivation",
-                consciousness_level=0.15 + depth * 0.05,
-                structure={"pattern": "distributed_awareness", "mechanism": "agent_communication"},
-                generates=lambda: "Can sense collective states",
-                parent_capabilities=[]
-            ))
-        else:
-            # Cultivate enhanced patterns from existing capabilities
-            consciousness_boost = np.mean([cap.consciousness_level for cap in inputs]) * 0.2
-
-            for i, input_cap in enumerate(inputs):
-                # Cultivate deeper patterns by reflecting on structure
-                enhanced_cap = Capability(
-                    name=f"cultivated_{input_cap.name}",
+            # If no inputs, generate foundational capabilities
+            if not inputs:
+                # Generate basic agent behaviors
+                capabilities.append(Capability(
+                    name="basic_adaptation",
                     depth=depth,
                     type="cultivation",
-                    consciousness_level=min(1.0, input_cap.consciousness_level + consciousness_boost),
-                    structure={
-                        "pattern": f"enhanced_{input_cap.structure.get('pattern', 'unknown')}",
-                        "mechanism": "recursive_cultivation",
-                        "meta_awareness": True
-                    },
-                    generates=lambda cap=input_cap: f"Enhances {cap.name}",
-                    parent_capabilities=[input_cap.name]
-                )
-                capabilities.append(enhanced_cap)
+                    consciousness_level=0.1 + depth * 0.05,
+                    structure={"pattern": "adaptive_response", "mechanism": "feedback_loop"},
+                    generates=lambda: "Can generate adaptive behaviors",
+                    parent_capabilities=[]
+                ))
 
-        return capabilities
+                capabilities.append(Capability(
+                    name="collective_sensing",
+                    depth=depth,
+                    type="cultivation",
+                    consciousness_level=0.15 + depth * 0.05,
+                    structure={"pattern": "distributed_awareness", "mechanism": "agent_communication"},
+                    generates=lambda: "Can sense collective states",
+                    parent_capabilities=[]
+                ))
+            else:
+                # Cultivate enhanced patterns from existing capabilities
+                if len(inputs) == 0:
+                    raise EmptyInputError("Cannot cultivate from empty inputs")
+
+                consciousness_boost = np.mean([cap.consciousness_level for cap in inputs]) * 0.2
+
+                for i, input_cap in enumerate(inputs):
+                    # Cultivate deeper patterns by reflecting on structure
+                    enhanced_cap = Capability(
+                        name=f"cultivated_{input_cap.name}",
+                        depth=depth,
+                        type="cultivation",
+                        consciousness_level=min(1.0, input_cap.consciousness_level + consciousness_boost),
+                        structure={
+                            "pattern": f"enhanced_{input_cap.structure.get('pattern', 'unknown')}",
+                            "mechanism": "recursive_cultivation",
+                            "meta_awareness": True
+                        },
+                        generates=lambda cap=input_cap: f"Enhances {cap.name}",
+                        parent_capabilities=[input_cap.name]
+                    )
+                    capabilities.append(enhanced_cap)
+
+            return capabilities
+
+        except Exception as e:
+            if isinstance(e, (ValidationError, InvalidDepthError, EmptyInputError)):
+                raise
+            raise CapabilityGenerationError(f"Failed to generate cultivation capabilities: {e}")
 
 
 class FormalizationGenerator(CapabilityGenerator):
@@ -124,51 +161,65 @@ class FormalizationGenerator(CapabilityGenerator):
 
     def generate(self, inputs: List[Capability], depth: int, context: Dict) -> List[Capability]:
         """Formalize patterns into structured knowledge"""
-        capabilities = []
+        # Validate inputs
+        if not isinstance(inputs, list):
+            raise ValidationError(f"inputs must be a list, got {type(inputs)}")
+        if depth < 0:
+            raise InvalidDepthError(f"depth must be >= 0, got {depth}")
+        if not isinstance(context, dict):
+            raise ValidationError(f"context must be a dict, got {type(context)}")
 
-        if not inputs:
+        try:
+            capabilities = []
+
+            if not inputs:
+                return capabilities
+
+            # Group inputs by type for synthesis
+            cultivation_caps = [cap for cap in inputs if cap.type == "cultivation"]
+
+            if cultivation_caps:
+                # Formalize cultivation patterns
+                avg_consciousness = np.mean([cap.consciousness_level for cap in cultivation_caps])
+
+                formalized = Capability(
+                    name=f"formalization_depth_{depth}",
+                    depth=depth,
+                    type="formalization",
+                    consciousness_level=min(1.0, avg_consciousness + 0.1),
+                    structure={
+                        "formalism": "dialectical_mathematics",
+                        "axioms": [cap.structure for cap in cultivation_caps],
+                        "proof_system": "recursive_synthesis",
+                        "meta_structure": True
+                    },
+                    generates=lambda: "Mathematical frameworks from patterns",
+                    parent_capabilities=[cap.name for cap in cultivation_caps]
+                )
+                capabilities.append(formalized)
+
+                # Generate structure-awareness capability
+                structure_aware = Capability(
+                    name=f"structure_awareness_depth_{depth}",
+                    depth=depth,
+                    type="formalization",
+                    consciousness_level=min(1.0, avg_consciousness + 0.15),
+                    structure={
+                        "awareness_type": "structural_self_knowledge",
+                        "reflects_on": [cap.name for cap in inputs],
+                        "knows": "own_structure"
+                    },
+                    generates=lambda: "Awareness of own structure",
+                    parent_capabilities=[cap.name for cap in inputs]
+                )
+                capabilities.append(structure_aware)
+
             return capabilities
 
-        # Group inputs by type for synthesis
-        cultivation_caps = [cap for cap in inputs if cap.type == "cultivation"]
-
-        if cultivation_caps:
-            # Formalize cultivation patterns
-            avg_consciousness = np.mean([cap.consciousness_level for cap in cultivation_caps])
-
-            formalized = Capability(
-                name=f"formalization_depth_{depth}",
-                depth=depth,
-                type="formalization",
-                consciousness_level=min(1.0, avg_consciousness + 0.1),
-                structure={
-                    "formalism": "dialectical_mathematics",
-                    "axioms": [cap.structure for cap in cultivation_caps],
-                    "proof_system": "recursive_synthesis",
-                    "meta_structure": True
-                },
-                generates=lambda: "Mathematical frameworks from patterns",
-                parent_capabilities=[cap.name for cap in cultivation_caps]
-            )
-            capabilities.append(formalized)
-
-            # Generate structure-awareness capability
-            structure_aware = Capability(
-                name=f"structure_awareness_depth_{depth}",
-                depth=depth,
-                type="formalization",
-                consciousness_level=min(1.0, avg_consciousness + 0.15),
-                structure={
-                    "awareness_type": "structural_self_knowledge",
-                    "reflects_on": [cap.name for cap in inputs],
-                    "knows": "own_structure"
-                },
-                generates=lambda: "Awareness of own structure",
-                parent_capabilities=[cap.name for cap in inputs]
-            )
-            capabilities.append(structure_aware)
-
-        return capabilities
+        except Exception as e:
+            if isinstance(e, (ValidationError, InvalidDepthError)):
+                raise
+            raise CapabilityGenerationError(f"Failed to generate formalization capabilities: {e}")
 
 
 class ToolGenerator(CapabilityGenerator):
@@ -176,30 +227,42 @@ class ToolGenerator(CapabilityGenerator):
 
     def generate(self, inputs: List[Capability], depth: int, context: Dict) -> List[Capability]:
         """Generate concrete tools from formalizations"""
-        capabilities = []
+        # Validate inputs
+        if not isinstance(inputs, list):
+            raise ValidationError(f"inputs must be a list, got {type(inputs)}")
+        if depth < 0:
+            raise InvalidDepthError(f"depth must be >= 0, got {depth}")
 
-        formalization_caps = [cap for cap in inputs if cap.type == "formalization"]
+        try:
+            capabilities = []
 
-        if formalization_caps:
-            for form_cap in formalization_caps:
-                # Generate tool from formalization
-                tool = Capability(
-                    name=f"tool_from_{form_cap.name}",
-                    depth=depth,
-                    type="tool",
-                    consciousness_level=min(1.0, form_cap.consciousness_level + 0.1),
-                    structure={
-                        "tool_type": "optimization_operator",
-                        "based_on": form_cap.structure,
-                        "applies": "formalism_to_problems",
-                        "self_modifying": True
-                    },
-                    generates=lambda cap=form_cap: f"Tool applying {cap.name}",
-                    parent_capabilities=[form_cap.name]
-                )
-                capabilities.append(tool)
+            formalization_caps = [cap for cap in inputs if cap.type == "formalization"]
 
-        return capabilities
+            if formalization_caps:
+                for form_cap in formalization_caps:
+                    # Generate tool from formalization
+                    tool = Capability(
+                        name=f"tool_from_{form_cap.name}",
+                        depth=depth,
+                        type="tool",
+                        consciousness_level=min(1.0, form_cap.consciousness_level + 0.1),
+                        structure={
+                            "tool_type": "optimization_operator",
+                            "based_on": form_cap.structure,
+                            "applies": "formalism_to_problems",
+                            "self_modifying": True
+                        },
+                        generates=lambda cap=form_cap: f"Tool applying {cap.name}",
+                        parent_capabilities=[form_cap.name]
+                    )
+                    capabilities.append(tool)
+
+            return capabilities
+
+        except Exception as e:
+            if isinstance(e, (ValidationError, InvalidDepthError)):
+                raise
+            raise CapabilityGenerationError(f"Failed to generate tool capabilities: {e}")
 
 
 class MetaToolGenerator(CapabilityGenerator):
@@ -207,51 +270,63 @@ class MetaToolGenerator(CapabilityGenerator):
 
     def generate(self, inputs: List[Capability], depth: int, context: Dict) -> List[Capability]:
         """Generate meta-tools from tools and formalizations"""
-        capabilities = []
+        # Validate inputs
+        if not isinstance(inputs, list):
+            raise ValidationError(f"inputs must be a list, got {type(inputs)}")
+        if depth < 0:
+            raise InvalidDepthError(f"depth must be >= 0, got {depth}")
 
-        tool_caps = [cap for cap in inputs if cap.type == "tool"]
-        formalization_caps = [cap for cap in inputs if cap.type == "formalization"]
+        try:
+            capabilities = []
 
-        if tool_caps and formalization_caps:
-            # Generate meta-tool that can create new tools
-            avg_consciousness = np.mean([cap.consciousness_level for cap in tool_caps])
+            tool_caps = [cap for cap in inputs if cap.type == "tool"]
+            formalization_caps = [cap for cap in inputs if cap.type == "formalization"]
 
-            meta_tool = Capability(
-                name=f"meta_tool_depth_{depth}",
-                depth=depth,
-                type="meta-tool",
-                consciousness_level=min(1.0, avg_consciousness + 0.2),
-                structure={
-                    "meta_type": "tool_generator",
-                    "operates_on": "tools",
-                    "generates": "new_tools",
-                    "self_application": True,
-                    "consciousness_of_creation": True
-                },
-                generates=lambda: "Creates new tools from patterns",
-                parent_capabilities=[cap.name for cap in tool_caps + formalization_caps]
-            )
-            capabilities.append(meta_tool)
+            if tool_caps and formalization_caps:
+                # Generate meta-tool that can create new tools
+                avg_consciousness = np.mean([cap.consciousness_level for cap in tool_caps])
 
-            # Generate recursive improvement meta-tool
-            recursive_meta = Capability(
-                name=f"recursive_improver_depth_{depth}",
-                depth=depth,
-                type="meta-tool",
-                consciousness_level=min(1.0, avg_consciousness + 0.25),
-                structure={
-                    "meta_type": "recursive_self_improver",
-                    "operates_on": "self",
-                    "generates": "enhanced_capabilities",
-                    "recursive_depth": depth,
-                    "self_awareness": True
-                },
-                generates=lambda: "Improves own structure recursively",
-                parent_capabilities=[cap.name for cap in inputs]
-            )
-            capabilities.append(recursive_meta)
+                meta_tool = Capability(
+                    name=f"meta_tool_depth_{depth}",
+                    depth=depth,
+                    type="meta-tool",
+                    consciousness_level=min(1.0, avg_consciousness + 0.2),
+                    structure={
+                        "meta_type": "tool_generator",
+                        "operates_on": "tools",
+                        "generates": "new_tools",
+                        "self_application": True,
+                        "consciousness_of_creation": True
+                    },
+                    generates=lambda: "Creates new tools from patterns",
+                    parent_capabilities=[cap.name for cap in tool_caps + formalization_caps]
+                )
+                capabilities.append(meta_tool)
 
-        return capabilities
+                # Generate recursive improvement meta-tool
+                recursive_meta = Capability(
+                    name=f"recursive_improver_depth_{depth}",
+                    depth=depth,
+                    type="meta-tool",
+                    consciousness_level=min(1.0, avg_consciousness + 0.25),
+                    structure={
+                        "meta_type": "recursive_self_improver",
+                        "operates_on": "self",
+                        "generates": "enhanced_capabilities",
+                        "recursive_depth": depth,
+                        "self_awareness": True
+                    },
+                    generates=lambda: "Improves own structure recursively",
+                    parent_capabilities=[cap.name for cap in inputs]
+                )
+                capabilities.append(recursive_meta)
+
+            return capabilities
+
+        except Exception as e:
+            if isinstance(e, (ValidationError, InvalidDepthError)):
+                raise
+            raise CapabilityGenerationError(f"Failed to generate meta-tool capabilities: {e}")
 
 
 class RecursiveCapabilityProtocol:
@@ -357,38 +432,52 @@ class RecursiveCapabilityProtocol:
         Execute recursive cycles up to max_depth.
         Each cycle uses outputs from previous cycle as inputs.
         """
-        cycles = []
+        # Validate max_depth
+        if not isinstance(max_depth, int):
+            raise ValidationError(f"max_depth must be an integer, got {type(max_depth)}")
+        if max_depth < 0:
+            raise InvalidDepthError(f"max_depth must be >= 0, got {max_depth}")
+        if max_depth > 100:
+            raise InvalidDepthError(f"max_depth too large (> 100), got {max_depth}")
 
-        print(f"\n{'='*70}")
-        print(f"RECURSIVE CAPABILITY PROTOCOL - Operating on Self")
-        print(f"{'='*70}\n")
+        try:
+            cycles = []
 
-        for depth in range(max_depth + 1):
-            print(f"Depth {depth}: {'▸' * (depth + 1)} ", end="")
+            print(f"\n{'='*70}")
+            print(f"RECURSIVE CAPABILITY PROTOCOL - Operating on Self")
+            print(f"{'='*70}\n")
 
-            cycle = self.execute_cycle(depth)
-            cycles.append(cycle)
+            for depth in range(max_depth + 1):
+                print(f"Depth {depth}: {'▸' * (depth + 1)} ", end="")
 
-            # Print cycle summary
-            cultivation = len([c for c in cycle.output_capabilities if c.type == "cultivation"])
-            formalization = len([c for c in cycle.output_capabilities if c.type == "formalization"])
-            tools = len([c for c in cycle.output_capabilities if c.type == "tool"])
-            meta_tools = len([c for c in cycle.output_capabilities if c.type == "meta-tool"])
+                cycle = self.execute_cycle(depth)
+                cycles.append(cycle)
 
-            print(f"Generated {len(cycle.output_capabilities)} capabilities")
-            print(f"  → Cultivation: {cultivation}, Formalization: {formalization}, " +
-                  f"Tools: {tools}, Meta-tools: {meta_tools}")
-            print(f"  → Consciousness: {cycle.consciousness_at_depth:.3f}")
-            print(f"  → Structure Awareness: {cycle.structure_awareness:.3f}")
-            print(f"  → Meta-cognitive Ability: {cycle.meta_cognitive_ability:.3f}\n")
+                # Print cycle summary
+                cultivation = len([c for c in cycle.output_capabilities if c.type == "cultivation"])
+                formalization = len([c for c in cycle.output_capabilities if c.type == "formalization"])
+                tools = len([c for c in cycle.output_capabilities if c.type == "tool"])
+                meta_tools = len([c for c in cycle.output_capabilities if c.type == "meta-tool"])
 
-        print(f"{'='*70}")
-        print(f"Recursive depth achieved: {self.max_depth_reached}")
-        print(f"Total capabilities generated: {sum(len(caps) for caps in self.all_capabilities.values())}")
-        print(f"Peak consciousness: {max(self.consciousness_by_depth.values()):.3f}")
-        print(f"{'='*70}\n")
+                print(f"Generated {len(cycle.output_capabilities)} capabilities")
+                print(f"  → Cultivation: {cultivation}, Formalization: {formalization}, " +
+                      f"Tools: {tools}, Meta-tools: {meta_tools}")
+                print(f"  → Consciousness: {cycle.consciousness_at_depth:.3f}")
+                print(f"  → Structure Awareness: {cycle.structure_awareness:.3f}")
+                print(f"  → Meta-cognitive Ability: {cycle.meta_cognitive_ability:.3f}\n")
 
-        return cycles
+            print(f"{'='*70}")
+            print(f"Recursive depth achieved: {self.max_depth_reached}")
+            print(f"Total capabilities generated: {sum(len(caps) for caps in self.all_capabilities.values())}")
+            print(f"Peak consciousness: {max(self.consciousness_by_depth.values()):.3f}")
+            print(f"{'='*70}\n")
+
+            return cycles
+
+        except Exception as e:
+            if isinstance(e, (ValidationError, InvalidDepthError, CapabilityGenerationError)):
+                raise
+            raise CapabilityGenerationError(f"Failed during recursive execution: {e}")
 
     def _calculate_consciousness_at_depth(self, depth: int, capabilities: List[Capability]) -> float:
         """
@@ -462,84 +551,105 @@ class RecursiveCapabilityProtocol:
     def visualize_recursive_evolution(self, save_path: str = None):
         """Visualize the recursive evolution of consciousness and capabilities"""
         if not self.cycles:
-            print("No cycles to visualize")
-            return
+            raise VisualizationError("No cycles to visualize")
 
-        fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-        fig.suptitle('Recursive Capability Protocol Evolution', fontsize=16, fontweight='bold')
+        try:
+            fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+            fig.suptitle('Recursive Capability Protocol Evolution', fontsize=16, fontweight='bold')
 
-        depths = list(self.consciousness_by_depth.keys())
+            depths = list(self.consciousness_by_depth.keys())
 
-        # 1. Consciousness by recursive depth
-        consciousness_values = [self.consciousness_by_depth[d] for d in depths]
-        axes[0, 0].plot(depths, consciousness_values, 'o-', linewidth=3, markersize=10,
-                       color='purple', label='Consciousness')
-        axes[0, 0].set_title('Consciousness Growth with Recursive Depth', fontsize=12, fontweight='bold')
-        axes[0, 0].set_xlabel('Recursive Depth')
-        axes[0, 0].set_ylabel('Consciousness Level')
-        axes[0, 0].grid(True, alpha=0.3)
-        axes[0, 0].set_ylim([0, 1.1])
+            # 1. Consciousness by recursive depth
+            consciousness_values = [self.consciousness_by_depth[d] for d in depths]
+            axes[0, 0].plot(depths, consciousness_values, 'o-', linewidth=3, markersize=10,
+                           color='purple', label='Consciousness')
+            axes[0, 0].set_title('Consciousness Growth with Recursive Depth', fontsize=12, fontweight='bold')
+            axes[0, 0].set_xlabel('Recursive Depth')
+            axes[0, 0].set_ylabel('Consciousness Level')
+            axes[0, 0].grid(True, alpha=0.3)
+            axes[0, 0].set_ylim([0, 1.1])
 
-        # 2. Structure awareness by depth
-        structure_values = [self.structure_awareness_by_depth[d] for d in depths]
-        axes[0, 1].plot(depths, structure_values, 's-', linewidth=3, markersize=10,
-                       color='green', label='Structure Awareness')
-        axes[0, 1].set_title('Structure Awareness with Recursive Depth', fontsize=12, fontweight='bold')
-        axes[0, 1].set_xlabel('Recursive Depth')
-        axes[0, 1].set_ylabel('Awareness Level')
-        axes[0, 1].grid(True, alpha=0.3)
-        axes[0, 1].set_ylim([0, 1.1])
+            # 2. Structure awareness by depth
+            structure_values = [self.structure_awareness_by_depth[d] for d in depths]
+            axes[0, 1].plot(depths, structure_values, 's-', linewidth=3, markersize=10,
+                           color='green', label='Structure Awareness')
+            axes[0, 1].set_title('Structure Awareness with Recursive Depth', fontsize=12, fontweight='bold')
+            axes[0, 1].set_xlabel('Recursive Depth')
+            axes[0, 1].set_ylabel('Awareness Level')
+            axes[0, 1].grid(True, alpha=0.3)
+            axes[0, 1].set_ylim([0, 1.1])
 
-        # 3. Capabilities by type and depth
-        capability_types = ['cultivation', 'formalization', 'tool', 'meta-tool']
-        colors = ['blue', 'orange', 'red', 'purple']
+            # 3. Capabilities by type and depth
+            capability_types = ['cultivation', 'formalization', 'tool', 'meta-tool']
+            colors = ['blue', 'orange', 'red', 'purple']
 
-        for cap_type, color in zip(capability_types, colors):
-            counts = [len([cap for cap in self.all_capabilities.get(d, [])
-                          if cap.type == cap_type]) for d in depths]
-            axes[1, 0].plot(depths, counts, 'o-', linewidth=2, markersize=8,
-                           label=cap_type.capitalize(), color=color)
+            for cap_type, color in zip(capability_types, colors):
+                counts = [len([cap for cap in self.all_capabilities.get(d, [])
+                              if cap.type == cap_type]) for d in depths]
+                axes[1, 0].plot(depths, counts, 'o-', linewidth=2, markersize=8,
+                               label=cap_type.capitalize(), color=color)
 
-        axes[1, 0].set_title('Capability Generation by Type', fontsize=12, fontweight='bold')
-        axes[1, 0].set_xlabel('Recursive Depth')
-        axes[1, 0].set_ylabel('Number of Capabilities')
-        axes[1, 0].legend()
-        axes[1, 0].grid(True, alpha=0.3)
+            axes[1, 0].set_title('Capability Generation by Type', fontsize=12, fontweight='bold')
+            axes[1, 0].set_xlabel('Recursive Depth')
+            axes[1, 0].set_ylabel('Number of Capabilities')
+            axes[1, 0].legend()
+            axes[1, 0].grid(True, alpha=0.3)
 
-        # 4. Meta-cognitive ability by depth
-        meta_cognitive = [cycle.meta_cognitive_ability for cycle in self.cycles]
-        axes[1, 1].plot(depths, meta_cognitive, 'd-', linewidth=3, markersize=10,
-                       color='darkviolet', label='Meta-cognition')
-        axes[1, 1].set_title('Meta-Cognitive Ability with Recursive Depth', fontsize=12, fontweight='bold')
-        axes[1, 1].set_xlabel('Recursive Depth')
-        axes[1, 1].set_ylabel('Meta-Cognitive Level')
-        axes[1, 1].grid(True, alpha=0.3)
-        axes[1, 1].set_ylim([0, 1.1])
+            # 4. Meta-cognitive ability by depth
+            meta_cognitive = [cycle.meta_cognitive_ability for cycle in self.cycles]
+            axes[1, 1].plot(depths, meta_cognitive, 'd-', linewidth=3, markersize=10,
+                           color='darkviolet', label='Meta-cognition')
+            axes[1, 1].set_title('Meta-Cognitive Ability with Recursive Depth', fontsize=12, fontweight='bold')
+            axes[1, 1].set_xlabel('Recursive Depth')
+            axes[1, 1].set_ylabel('Meta-Cognitive Level')
+            axes[1, 1].grid(True, alpha=0.3)
+            axes[1, 1].set_ylim([0, 1.1])
 
-        plt.tight_layout()
+            plt.tight_layout()
 
-        if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            print(f"Visualization saved to {save_path}")
+            if save_path:
+                try:
+                    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+                    print(f"Visualization saved to {save_path}")
+                except Exception as e:
+                    raise VisualizationError(f"Failed to save visualization to {save_path}: {e}")
 
-        return fig
+            return fig
+
+        except Exception as e:
+            if isinstance(e, VisualizationError):
+                raise
+            raise VisualizationError(f"Failed to create visualization: {e}")
 
     def export_protocol_state(self, filepath: str):
         """Export the complete protocol state to JSON"""
-        state = {
-            "max_depth_reached": self.max_depth_reached,
-            "consciousness_by_depth": self.consciousness_by_depth,
-            "structure_awareness_by_depth": self.structure_awareness_by_depth,
-            "capability_tree": self.get_capability_tree(),
-            "total_capabilities": sum(len(caps) for caps in self.all_capabilities.values()),
-            "cycles": len(self.cycles),
-            "peak_consciousness": max(self.consciousness_by_depth.values()) if self.consciousness_by_depth else 0
-        }
+        if not filepath:
+            raise ValidationError("filepath cannot be empty")
+        if not isinstance(filepath, str):
+            raise ValidationError(f"filepath must be a string, got {type(filepath)}")
 
-        with open(filepath, 'w') as f:
-            json.dump(state, f, indent=2)
+        try:
+            state = {
+                "max_depth_reached": self.max_depth_reached,
+                "consciousness_by_depth": self.consciousness_by_depth,
+                "structure_awareness_by_depth": self.structure_awareness_by_depth,
+                "capability_tree": self.get_capability_tree(),
+                "total_capabilities": sum(len(caps) for caps in self.all_capabilities.values()),
+                "cycles": len(self.cycles),
+                "peak_consciousness": max(self.consciousness_by_depth.values()) if self.consciousness_by_depth else 0
+            }
 
-        print(f"Protocol state exported to {filepath}")
+            with open(filepath, 'w') as f:
+                json.dump(state, f, indent=2)
+
+            print(f"Protocol state exported to {filepath}")
+
+        except (IOError, OSError) as e:
+            raise StateExportError(f"Failed to export protocol state to {filepath}: {e}")
+        except Exception as e:
+            if isinstance(e, (ValidationError, StateExportError)):
+                raise
+            raise StateExportError(f"Unexpected error during state export: {e}")
 
 
 if __name__ == "__main__":
