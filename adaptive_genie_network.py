@@ -10,6 +10,11 @@ Core Philosophy:
 - Optimization follows natural rhythms and resonance patterns
 - Boundaries are dynamic gradient fields, not rigid constraints
 - Convergence emerges through collective intelligence
+
+Integration:
+- Uses DialecticalGenie for core dialectical reasoning
+- Consciousness evolution powered by Hegelian synthesis
+- Thesis-antithesis-synthesis cycles drive parameter adaptation
 """
 
 import numpy as np
@@ -23,6 +28,11 @@ from collections import deque
 from exceptions import (
     ValidationError, InvalidBoundsError, InvalidParameterError,
     NegotiationError, VisualizationError, NumericError, DimensionMismatchError
+)
+from dialectical_genie import (
+    DialecticalGenie, Thesis, Antithesis, Synthesis,
+    ConsciousnessEvolver, create_dialectical_context,
+    dialectical_synthesis_from_values
 )
 
 
@@ -346,41 +356,77 @@ class GradientField:
 
 class AdaptiveGenieNetwork:
     """
-    The main network that orchestrates dialectical negotiation between agents
+    The main network that orchestrates dialectical negotiation between agents.
+
+    Integrates with DialecticalGenie for:
+    - Thesis-antithesis-synthesis negotiation cycles
+    - Consciousness evolution through dialectical reasoning
+    - Emergent parameter adaptation
     """
-    
-    def __init__(self):
+
+    def __init__(self, dialectical_genie: Optional[DialecticalGenie] = None):
+        # Core dialectical engine
+        self.genie = dialectical_genie or DialecticalGenie(
+            initial_consciousness=0.5,
+            preservation_bias=0.5
+        )
+
         # Parameters ARE agents
         self.population = PopulationAgent()
         self.iterator = RhythmAgent()
         self.convergence = ResonanceAgent()
         self.boundaries = GradientField()
-        
+
         # System state
         self.negotiation_history = []
-        self.collective_consciousness = 0.5
         self.system_energy = 1.0
+
+        # Register callback to sync consciousness with genie
+        self.genie.register_consciousness_callback(self._on_genie_consciousness_change)
+
+    @property
+    def collective_consciousness(self) -> float:
+        """Collective consciousness is now managed by the DialecticalGenie"""
+        return self.genie.consciousness
+
+    @collective_consciousness.setter
+    def collective_consciousness(self, value: float):
+        """Update genie consciousness when set externally"""
+        self.genie.consciousness_evolver.consciousness = np.clip(value, 0.0, 1.0)
+
+    def _on_genie_consciousness_change(self, new_consciousness: float):
+        """Callback when genie consciousness changes"""
+        # Evolve agent consciousness based on genie
+        feedback = new_consciousness * self.system_energy
+        self.population.evolve_consciousness(feedback)
+        self.iterator.evolve_consciousness(feedback)
+        self.convergence.evolve_consciousness(feedback)
         
     def measure_negation_density(self, problem_landscape: Dict) -> ComplexityMeasure:
-        """Measure the dialectical complexity of the problem landscape"""
+        """
+        Measure the dialectical complexity of the problem landscape.
+        Uses DialecticalGenie for negation density calculation.
+        """
         # Analyze problem characteristics
         dimensions = problem_landscape.get('dimensions', 2)
         multimodality = problem_landscape.get('multimodality', 0.5)
         noise_level = problem_landscape.get('noise_level', 0.1)
         deception = problem_landscape.get('deception', 0.3)
-        
-        # Calculate negation density (how much the problem contradicts itself)
-        negation_density = (multimodality + deception) / 2.0
-        
+
+        # Use genie to calculate negation density
+        negation_density = self.genie.measure_negation_density(problem_landscape)
+
         # Exploration requirement increases with complexity
         exploration_requirement = negation_density * (1.0 + noise_level)
-        
+
         # Convergence gradient decreases with deception
         convergence_gradient = (1.0 - deception) * (1.0 - noise_level)
-        
-        # Dialectical tension
-        dialectical_tension = abs(exploration_requirement - convergence_gradient)
-        
+
+        # Dialectical tension from genie state
+        genie_state = self.genie.get_state()
+        base_tension = abs(exploration_requirement - convergence_gradient)
+        dialectical_tension = base_tension * (1 + self.genie.consciousness * 0.5)
+
         return ComplexityMeasure(
             exploration_requirement=exploration_requirement,
             convergence_gradient=convergence_gradient,
@@ -431,65 +477,112 @@ class AdaptiveGenieNetwork:
         
         return negotiation_result
     
-    def _synthesize_proposals(self, pop_proposal: Dict, rhythm_proposal: Dict, 
+    def _synthesize_proposals(self, pop_proposal: Dict, rhythm_proposal: Dict,
                             resonance_proposal: Dict, complexity: ComplexityMeasure) -> Dict:
-        """Synthesize agent proposals through dialectical reasoning"""
+        """
+        Synthesize agent proposals through dialectical reasoning.
+        Uses DialecticalGenie for Hegelian thesis-antithesis-synthesis.
+        """
+        # Create thesis from population proposal (thesis: expand)
+        thesis = Thesis(
+            proposition="population_expansion",
+            value={
+                'population_size': pop_proposal['population_size'],
+                'energy_level': pop_proposal['energy_level'],
+                'breathing_phase': pop_proposal['breathing_phase']
+            },
+            confidence=pop_proposal['energy_level']
+        )
+
+        # Create antithesis from convergence proposal (antithesis: contract)
+        antithesis = Antithesis(
+            proposition="convergence_contraction",
+            value={
+                'crystallization_level': resonance_proposal['crystallization_level'],
+                'harmony_level': resonance_proposal['harmony_level'],
+                'dynamic_threshold': resonance_proposal['dynamic_threshold']
+            },
+            opposition_strength=resonance_proposal['crystallization_level'],
+            thesis_reference="population_expansion"
+        )
+
+        # Use genie for dialectical synthesis
+        dialectical_synthesis = self.genie.dialectical_cycle(thesis, antithesis)
+
+        # Build final synthesis from genie result and agent proposals
         synthesis = {}
-        
-        # Population size from population agent
-        synthesis['population_size'] = pop_proposal['population_size']
-        
+
+        # Population size - use dialectical synthesis to balance
+        if isinstance(dialectical_synthesis.value, dict):
+            synth_pop = dialectical_synthesis.value.get('population_size', pop_proposal['population_size'])
+        else:
+            synth_pop = pop_proposal['population_size']
+        synthesis['population_size'] = int(synth_pop) if isinstance(synth_pop, (int, float)) else pop_proposal['population_size']
+
         # Iteration control from rhythm agent
         synthesis['continue_iteration'] = not rhythm_proposal['cycle_complete']
         synthesis['natural_frequency'] = rhythm_proposal['natural_frequency']
         synthesis['rhythm_energy'] = rhythm_proposal['rhythm_energy']
-        
-        # Convergence from resonance agent
+
+        # Convergence from resonance agent, influenced by synthesis
         synthesis['convergence_threshold'] = resonance_proposal['dynamic_threshold']
         synthesis['crystallization_level'] = resonance_proposal['crystallization_level']
         synthesis['harmony_level'] = resonance_proposal['harmony_level']
-        
-        # Dialectical synthesis of energies
-        total_energy = (
-            pop_proposal['energy_level'] + 
-            abs(rhythm_proposal['rhythm_energy']) + 
+
+        # Dialectical synthesis of energies using genie
+        energy_values = [
+            pop_proposal['energy_level'],
+            abs(rhythm_proposal['rhythm_energy']),
             resonance_proposal['harmony_level']
-        ) / 3.0
-        
+        ]
+        total_energy = dialectical_synthesis_from_values(energy_values)
+
         synthesis['system_energy'] = total_energy
         synthesis['dialectical_tension'] = complexity.dialectical_tension
-        
+        synthesis['transcendence_level'] = dialectical_synthesis.transcendence_level
+        synthesis['consciousness_gained'] = dialectical_synthesis.consciousness_gained
+
         return synthesis
     
     def _update_collective_consciousness(self, negotiation_result: Dict):
-        """Update the collective consciousness of the system"""
-        # Consciousness evolves based on harmony and energy
-        harmony = negotiation_result.get('harmony_level', 0.5)
-        energy = negotiation_result.get('system_energy', 0.5)
-        
-        consciousness_delta = 0.01 * (harmony + energy - 1.0)
-        self.collective_consciousness = np.clip(
-            self.collective_consciousness + consciousness_delta, 0.0, 1.0
-        )
-        
+        """
+        Update the collective consciousness of the system.
+        Now delegated to DialecticalGenie for proper dialectical evolution.
+        """
         # Update system energy
+        energy = negotiation_result.get('system_energy', 0.5)
         self.system_energy = energy
-        
-        # Evolve individual agent consciousness
+
+        # If synthesis produced consciousness gain, let the genie handle it
+        # The genie's consciousness callbacks will update agent consciousness
+        consciousness_gained = negotiation_result.get('consciousness_gained', 0.0)
+        transcendence = negotiation_result.get('transcendence_level', 0.0)
+
+        # Genie reflection for additional consciousness growth
+        if transcendence > 0.5:
+            self.genie.consciousness_evolver.reflect()
+
+        # Individual agent consciousness still evolves based on harmony
+        harmony = negotiation_result.get('harmony_level', 0.5)
         feedback = harmony * energy
         self.population.evolve_consciousness(feedback)
         self.iterator.evolve_consciousness(feedback)
         self.convergence.evolve_consciousness(feedback)
     
     def get_system_state(self) -> Dict:
-        """Get current state of the entire system"""
+        """Get current state of the entire system, including dialectical genie state"""
+        genie_state = self.genie.get_state()
         return {
             'collective_consciousness': self.collective_consciousness,
             'system_energy': self.system_energy,
             'population_size': self.population.size,
             'natural_frequency': self.iterator.natural_frequency,
             'crystallization_level': self.convergence.harmony_level,
-            'negotiation_count': len(self.negotiation_history)
+            'negotiation_count': len(self.negotiation_history),
+            'reflection_depth': genie_state.get('reflection_depth', 0),
+            'dialectical_phase': genie_state.get('current_phase', 'unknown'),
+            'genie_nesting_depth': genie_state.get('nesting_depth', 0),
+            'synthesis_count': len(self.genie.get_synthesis_history())
         }
     
     def visualize_system_dynamics(self, save_path: str = None):
