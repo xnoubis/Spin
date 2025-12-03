@@ -24,6 +24,14 @@ from scipy.signal import spectrogram
 import warnings
 warnings.filterwarnings('ignore')
 
+# Public API exports
+__all__ = [
+    "VisualizationConfig",
+    "SystemDynamicsVisualizer",
+    "OptimizationLandscapeVisualizer",
+    "RealTimeMonitor",
+]
+
 from adaptive_genie_network import AdaptiveGenieNetwork
 from mathematical_models import NegationDensityCalculator, ResonanceCalculator
 from example_applications import OptimizationResult
