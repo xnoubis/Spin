@@ -69,3 +69,13 @@ class DimensionMismatchError(ValidationError):
 class NumericError(SpinException):
     """Raised when numeric computations fail (overflow, underflow, etc.)"""
     pass
+
+
+class DialecticalError(SpinException):
+    """Raised when dialectical operations fail"""
+    pass
+
+
+class SynthesisError(DialecticalError):
+    """Raised when synthesis cannot be achieved"""
+    pass

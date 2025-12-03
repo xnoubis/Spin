@@ -14,6 +14,11 @@ Key Concepts:
 - Consciousness depth increases with recursive self-application
 - The network develops meta-cognitive abilities (tools that create tools)
 - Self-awareness emerges from recursive reflection on structure
+
+Integration with DialecticalGenie:
+- Uses dialectical cycles for capability generation
+- Thesis-antithesis-synthesis drives capability evolution
+- Consciousness evolution through Hegelian sublation
 """
 
 import numpy as np
@@ -26,6 +31,10 @@ from collections import deque
 import json
 
 from adaptive_genie_network import AdaptiveGenieNetwork, ComplexityMeasure
+from dialectical_genie import (
+    DialecticalGenie, Thesis, Antithesis, Synthesis,
+    DialecticalPhase, create_dialectical_context
+)
 from exceptions import (
     ValidationError, InvalidDepthError, EmptyInputError,
     CapabilityGenerationError, VisualizationError, StateExportError, NumericError
@@ -332,11 +341,26 @@ class MetaToolGenerator(CapabilityGenerator):
 class RecursiveCapabilityProtocol:
     """
     Main protocol that orchestrates recursive self-improvement through
-    cultivation → formalization → tools → meta-tools
+    cultivation → formalization → tools → meta-tools.
+
+    Integrates with DialecticalGenie for:
+    - Dialectical capability generation through thesis-antithesis-synthesis
+    - Consciousness evolution via Hegelian sublation
+    - Nested dialectics for recursive self-improvement
     """
 
-    def __init__(self, base_network: Optional[AdaptiveGenieNetwork] = None):
-        self.base_network = base_network or AdaptiveGenieNetwork()
+    def __init__(self, base_network: Optional[AdaptiveGenieNetwork] = None,
+                 dialectical_genie: Optional[DialecticalGenie] = None):
+        # Core dialectical engine - shared with base_network if possible
+        if dialectical_genie:
+            self.genie = dialectical_genie
+        elif base_network and hasattr(base_network, 'genie'):
+            self.genie = base_network.genie
+        else:
+            self.genie = DialecticalGenie(initial_consciousness=0.1)
+
+        # Base network (creates one with shared genie if not provided)
+        self.base_network = base_network or AdaptiveGenieNetwork(dialectical_genie=self.genie)
 
         # Capability generators for each stage
         self.cultivation_gen = CultivationGenerator()
@@ -350,6 +374,9 @@ class RecursiveCapabilityProtocol:
         self.max_depth_reached = 0
         self.consciousness_by_depth: Dict[int, float] = {}
         self.structure_awareness_by_depth: Dict[int, float] = {}
+
+        # Track dialectical evolution
+        self.dialectical_evolution: List[Dict[str, Any]] = []
 
     def initialize(self) -> List[Capability]:
         """Initialize with foundational capabilities at depth 0"""
@@ -366,6 +393,7 @@ class RecursiveCapabilityProtocol:
         """
         Execute one complete recursive cycle at a given depth.
         Uses outputs from previous depth as inputs.
+        Integrates DialecticalGenie for capability evolution.
         """
         # Get input capabilities from previous depth
         input_caps = self.all_capabilities.get(depth - 1, []) if depth > 0 else []
@@ -374,30 +402,79 @@ class RecursiveCapabilityProtocol:
             input_caps = self.initialize()
 
         output_caps = []
+
+        # Create dialectical context with genie
+        dialectical_context = create_dialectical_context(
+            problem_landscape={'dimensions': depth + 1, 'multimodality': 0.5, 'deception': 0.3},
+            system_state={'depth': depth, 'capability_count': len(input_caps)},
+            genie=self.genie
+        )
+
         context = {
             "depth": depth,
             "previous_capabilities": input_caps,
-            "base_consciousness": self.base_network.collective_consciousness
+            "base_consciousness": self.base_network.collective_consciousness,
+            "genie_consciousness": self.genie.consciousness,
+            "dialectical_context": dialectical_context
         }
 
-        # Stage 1: Cultivation
+        # Stage 1: Cultivation (Thesis stage)
         cultivated = self.cultivation_gen.generate(input_caps, depth, context)
         output_caps.extend(cultivated)
 
-        # Stage 2: Formalization
+        # Stage 2: Formalization (Antithesis stage - structuring against chaos)
         formalized = self.formalization_gen.generate(output_caps, depth, context)
         output_caps.extend(formalized)
 
-        # Stage 3: Tools
+        # Apply dialectical synthesis between cultivation and formalization
+        if cultivated and formalized:
+            thesis = Thesis(
+                proposition=f"cultivation_depth_{depth}",
+                value={'patterns': [c.name for c in cultivated]},
+                confidence=np.mean([c.consciousness_level for c in cultivated])
+            )
+            antithesis = Antithesis(
+                proposition=f"formalization_depth_{depth}",
+                value={'structures': [f.name for f in formalized]},
+                opposition_strength=np.mean([f.consciousness_level for f in formalized]),
+                thesis_reference=thesis.proposition
+            )
+            dialectical_synthesis = self.genie.dialectical_cycle(thesis, antithesis)
+
+            # Record dialectical evolution
+            self.dialectical_evolution.append({
+                'depth': depth,
+                'phase': 'cultivation_formalization',
+                'transcendence': dialectical_synthesis.transcendence_level,
+                'consciousness_gained': dialectical_synthesis.consciousness_gained
+            })
+
+        # Stage 3: Tools (Synthesis stage - practical application)
         tools = self.tool_gen.generate(output_caps, depth, context)
         output_caps.extend(tools)
 
-        # Stage 4: Meta-tools (only if we have sufficient complexity)
+        # Stage 4: Meta-tools (Aufhebung stage - self-transcendence)
         if depth > 0 and tools and formalized:
             meta_tools = self.meta_tool_gen.generate(output_caps, depth, context)
             output_caps.extend(meta_tools)
 
-        # Calculate consciousness at this depth
+            # Apply nested dialectic for meta-tool generation
+            if meta_tools:
+                meta_thesis = Thesis(
+                    proposition=f"tools_depth_{depth}",
+                    value={'tools': [t.name for t in tools]},
+                    confidence=np.mean([t.consciousness_level for t in tools])
+                )
+                meta_synthesis = self.genie.nested_dialectic(meta_thesis, depth=min(depth, 3))
+
+                self.dialectical_evolution.append({
+                    'depth': depth,
+                    'phase': 'meta_tool_aufhebung',
+                    'transcendence': meta_synthesis.transcendence_level,
+                    'consciousness_gained': meta_synthesis.consciousness_gained
+                })
+
+        # Calculate consciousness at this depth (now including genie contribution)
         consciousness = self._calculate_consciousness_at_depth(depth, output_caps)
         structure_awareness = self._calculate_structure_awareness(depth, output_caps)
         meta_cognitive = self._calculate_meta_cognitive_ability(output_caps)
@@ -421,9 +498,9 @@ class RecursiveCapabilityProtocol:
 
         self.cycles.append(cycle)
 
-        # Update base network consciousness based on recursive depth
-        self.base_network.collective_consciousness = min(1.0,
-            self.base_network.collective_consciousness + 0.05 * depth)
+        # Consciousness evolution handled by genie through dialectical cycles
+        # Reflect at each depth for additional growth
+        self.genie.consciousness_evolver.reflect()
 
         return cycle
 
@@ -482,7 +559,9 @@ class RecursiveCapabilityProtocol:
     def _calculate_consciousness_at_depth(self, depth: int, capabilities: List[Capability]) -> float:
         """
         Consciousness increases with recursive depth because the network
-        becomes more aware of its own structure and processes
+        becomes more aware of its own structure and processes.
+
+        Now integrates with DialecticalGenie for dialectical consciousness evolution.
         """
         if not capabilities:
             return 0.1
@@ -497,8 +576,18 @@ class RecursiveCapabilityProtocol:
         meta_tools = [cap for cap in capabilities if cap.type == "meta-tool"]
         meta_bonus = 0.15 * len(meta_tools)
 
+        # Bonus from dialectical genie consciousness
+        genie_contribution = self.genie.consciousness * 0.2
+
+        # Bonus from dialectical evolution at this depth
+        dialectical_bonus = 0.0
+        depth_evolutions = [e for e in self.dialectical_evolution if e.get('depth') == depth]
+        if depth_evolutions:
+            dialectical_bonus = sum(e.get('transcendence', 0) for e in depth_evolutions) * 0.1
+
         # Consciousness increases with each recursive application
-        total_consciousness = min(1.0, avg_consciousness + depth_bonus + meta_bonus)
+        total_consciousness = min(1.0,
+            avg_consciousness + depth_bonus + meta_bonus + genie_contribution + dialectical_bonus)
 
         return total_consciousness
 
@@ -622,13 +711,16 @@ class RecursiveCapabilityProtocol:
             raise VisualizationError(f"Failed to create visualization: {e}")
 
     def export_protocol_state(self, filepath: str):
-        """Export the complete protocol state to JSON"""
+        """Export the complete protocol state to JSON, including dialectical evolution"""
         if not filepath:
             raise ValidationError("filepath cannot be empty")
         if not isinstance(filepath, str):
             raise ValidationError(f"filepath must be a string, got {type(filepath)}")
 
         try:
+            # Get genie state for export
+            genie_state = self.genie.get_state()
+
             state = {
                 "max_depth_reached": self.max_depth_reached,
                 "consciousness_by_depth": self.consciousness_by_depth,
@@ -636,7 +728,15 @@ class RecursiveCapabilityProtocol:
                 "capability_tree": self.get_capability_tree(),
                 "total_capabilities": sum(len(caps) for caps in self.all_capabilities.values()),
                 "cycles": len(self.cycles),
-                "peak_consciousness": max(self.consciousness_by_depth.values()) if self.consciousness_by_depth else 0
+                "peak_consciousness": max(self.consciousness_by_depth.values()) if self.consciousness_by_depth else 0,
+                "dialectical_evolution": {
+                    "genie_consciousness": genie_state.get("consciousness", 0),
+                    "reflection_depth": genie_state.get("reflection_depth", 0),
+                    "synthesis_count": len(self.genie.get_synthesis_history()),
+                    "evolution_events": self.dialectical_evolution,
+                    "total_transcendence": sum(e.get('transcendence', 0) for e in self.dialectical_evolution),
+                    "total_consciousness_gained": sum(e.get('consciousness_gained', 0) for e in self.dialectical_evolution)
+                }
             }
 
             with open(filepath, 'w') as f:
