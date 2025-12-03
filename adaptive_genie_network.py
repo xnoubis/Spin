@@ -368,7 +368,12 @@ class AdaptiveGenieNetwork:
         
         # System state
         self.negotiation_history = []
-        self.collective_consciousness = 0.5
+        # Consciousness channels track distinct growth pathways
+        self.consciousness_through_dialectic = 0.2
+        self.consciousness_through_harmony = 0.3
+        self.collective_consciousness = (
+            self.consciousness_through_harmony + self.consciousness_through_dialectic
+        )
         self.system_energy = 1.0
         
     def measure_negation_density(self, problem_landscape: Dict) -> ComplexityMeasure:
@@ -436,7 +441,11 @@ class AdaptiveGenieNetwork:
                 'rhythm': rhythm_proposal,
                 'resonance': resonance_proposal
             },
-            'synthesis': negotiation_result
+            'synthesis': negotiation_result,
+            'consciousness_channels': {
+                'harmony': self.consciousness_through_harmony,
+                'dialectic': self.consciousness_through_dialectic
+            }
         })
         
         return negotiation_result
@@ -473,18 +482,33 @@ class AdaptiveGenieNetwork:
     
     def _update_collective_consciousness(self, negotiation_result: Dict):
         """Update the collective consciousness of the system"""
-        # Consciousness evolves based on harmony and energy
+        # Consciousness evolves along different pathways
         harmony = negotiation_result.get('harmony_level', 0.5)
         energy = negotiation_result.get('system_energy', 0.5)
-        
-        consciousness_delta = 0.01 * (harmony + energy - 1.0)
-        self.collective_consciousness = np.clip(
-            self.collective_consciousness + consciousness_delta, 0.0, 1.0
+        dialectical_tension = negotiation_result.get('dialectical_tension', 0.0)
+
+        # Harmony-based growth rewards resonance with available energy
+        harmony_delta = 0.01 * (harmony + energy - 1.0)
+        self.consciousness_through_harmony = np.clip(
+            self.consciousness_through_harmony + harmony_delta, 0.0, 1.0
         )
-        
+
+        # Dialectical growth responds to tension gradients in the landscape
+        dialectic_delta = 0.01 * dialectical_tension
+        self.consciousness_through_dialectic = np.clip(
+            self.consciousness_through_dialectic + dialectic_delta, 0.0, 1.0
+        )
+
+        # Combine channels to produce the overall collective consciousness
+        self.collective_consciousness = np.clip(
+            0.6 * self.consciousness_through_harmony +
+            0.4 * self.consciousness_through_dialectic,
+            0.0, 1.0
+        )
+
         # Update system energy
         self.system_energy = energy
-        
+
         # Evolve individual agent consciousness
         feedback = harmony * energy
         self.population.evolve_consciousness(feedback)
@@ -495,6 +519,8 @@ class AdaptiveGenieNetwork:
         """Get current state of the entire system"""
         return {
             'collective_consciousness': self.collective_consciousness,
+            'consciousness_through_harmony': self.consciousness_through_harmony,
+            'consciousness_through_dialectic': self.consciousness_through_dialectic,
             'system_energy': self.system_energy,
             'population_size': self.population.size,
             'natural_frequency': self.iterator.natural_frequency,
