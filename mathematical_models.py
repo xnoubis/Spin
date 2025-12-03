@@ -14,6 +14,15 @@ from typing import Dict, List, Tuple, Callable, Optional
 import matplotlib.pyplot as plt
 from dataclasses import dataclass
 
+# Public API exports
+__all__ = [
+    "DialecticalState",
+    "NegationDensityCalculator",
+    "ResonanceCalculator",
+    "GradientFieldMathematics",
+    "DialecticalSynthesis",
+]
+
 
 @dataclass
 class DialecticalState:

@@ -14,11 +14,24 @@ from dataclasses import dataclass
 
 from adaptive_genie_network import AdaptiveGenieNetwork, ComplexityMeasure
 from mathematical_models import (
-    NegationDensityCalculator, 
-    ResonanceCalculator, 
+    NegationDensityCalculator,
+    ResonanceCalculator,
     DialecticalSynthesis,
     GradientFieldMathematics
 )
+
+# Public API exports
+__all__ = [
+    "OptimizationResult",
+    "DialecticalParticleSwarm",
+    "DialecticalGeneticAlgorithm",
+    "rastrigin",
+    "rosenbrock",
+    "ackley",
+    "schwefel",
+    "visualize_optimization_dynamics",
+    "run_comparative_study",
+]
 
 
 @dataclass

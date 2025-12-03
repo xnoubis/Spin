@@ -5,6 +5,23 @@ These exceptions provide clear, specific error messages to help with debugging
 and error handling throughout the system.
 """
 
+# Public API exports
+__all__ = [
+    "SpinException",
+    "ValidationError",
+    "InvalidDepthError",
+    "InvalidBoundsError",
+    "InvalidParameterError",
+    "EmptyInputError",
+    "CapabilityGenerationError",
+    "NegotiationError",
+    "ConvergenceError",
+    "VisualizationError",
+    "StateExportError",
+    "DimensionMismatchError",
+    "NumericError",
+]
+
 
 class SpinException(Exception):
     """Base exception for all Spin-related errors"""

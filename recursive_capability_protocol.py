@@ -31,6 +31,17 @@ from exceptions import (
     CapabilityGenerationError, VisualizationError, StateExportError, NumericError
 )
 
+# Public API exports
+__all__ = [
+    "RecursiveCapabilityProtocol",
+    "Capability",
+    "CapabilityGenerator",
+    "CultivationGenerator",
+    "FormalizationGenerator",
+    "ToolGenerator",
+    "MetaToolGenerator",
+]
+
 
 @dataclass
 class Capability:
