@@ -1,0 +1,7 @@
+Status,Workstream,Task,Owner,Due,Linked Asset / Prompt,Notes
+Backlog,Product,"Map Unified Genie → Gift Cascade flow",You,Day 0,"SOLO_PLAN.md#today","Pull questions for Virtue while mapping"
+In Progress,Demo,"Record 60s Streamlit walkthrough",You,Day 2,"DEMO_SCRIPT.md","Publish to Loom and embed in Notion"
+In Progress,Data,"Run headless snippet and refresh result.json",You,Day 2,"RUN_DEMO_SNIPPET.py","Upload JSON to shared folder"
+Review,Story,"Draft one-pager narrative core",You,Day 6,"PITCH_ONE_PAGER_TEMPLATE.md","Ask Virtue for analogies"
+Blocked,Outreach,"Secure 3 partnership intro calls",You,Day 7,"OUTREACH_EMAIL.md","Need warm intros; request via network"
+Done,Cadence,"Create founder operating journal",You,Day 0,"SOLO_PLAN.md","Update nightly with wins + frictions"
