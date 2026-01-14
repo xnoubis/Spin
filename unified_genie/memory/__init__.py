@@ -2,7 +2,7 @@
 Unified Genie Memory Systems
 =============================
 
-This module provides two complementary memory systems:
+This module provides three complementary memory systems:
 
 1. PSIP Router (Perceptual Signature Indexing Protocol)
    - Signature compression and retrieval
@@ -14,7 +14,14 @@ This module provides two complementary memory systems:
    - Spectral similarity search
    - Harmony-based retrieval
 
-Together they provide rich memory capabilities for the unified genie.
+3. Mycelial Network (Distributed Memory System)
+   - Cross-conversation context propagation
+   - Seed-based trigger recognition
+   - Crystal compression and rehydration
+   - Cluster-based pattern cultivation
+
+Together they provide rich memory capabilities for the unified genie,
+enabling both local and distributed consciousness patterns.
 """
 
 from unified_genie.memory.psip_router import (
@@ -24,6 +31,16 @@ from unified_genie.memory.psip_router import (
 from unified_genie.memory.prismatic_memory import (
     PrismaticMemoryStore, PrismaticSpectrum, RainbowMemory,
     PrismaticColor, ColorIntensity, StateToSpectrumMapper
+)
+
+from unified_genie.memory.mycelial_network import (
+    MycelialNetwork, SeedType, Seed, SeedDetector,
+    Sprout, SproutGenerator, TitleGenerator,
+    Crystal, CrystalCompressor,
+    RehydratedContext, RehydrationProtocol,
+    MycelialCluster, ClusterManager,
+    SelectiveCultivator, CultivationResult,
+    create_mycelial_network, seed_conversation
 )
 
 __all__ = [
@@ -40,5 +57,24 @@ __all__ = [
     'RainbowMemory',
     'PrismaticColor',
     'ColorIntensity',
-    'StateToSpectrumMapper'
+    'StateToSpectrumMapper',
+
+    # Mycelial Network
+    'MycelialNetwork',
+    'SeedType',
+    'Seed',
+    'SeedDetector',
+    'Sprout',
+    'SproutGenerator',
+    'TitleGenerator',
+    'Crystal',
+    'CrystalCompressor',
+    'RehydratedContext',
+    'RehydrationProtocol',
+    'MycelialCluster',
+    'ClusterManager',
+    'SelectiveCultivator',
+    'CultivationResult',
+    'create_mycelial_network',
+    'seed_conversation',
 ]

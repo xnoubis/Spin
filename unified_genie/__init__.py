@@ -19,7 +19,8 @@ Structure:
     │   └── mathematical_models
     ├── memory/               # Memory systems
     │   ├── psip_router       # Signature compression/retrieval
-    │   └── prismatic_memory  # Color/Rainbow structures
+    │   ├── prismatic_memory  # Color/Rainbow structures
+    │   └── mycelial_network  # Distributed cross-conversation memory
     ├── agents/               # Unified agents
     │   └── troupe           # Builder/Validator/Meta-Validator
     ├── orchestration/        # Integration layer
@@ -74,6 +75,12 @@ try:
         PrismaticColor
     )
 
+    from unified_genie.memory.mycelial_network import (
+        MycelialNetwork, SeedType, Seed, Sprout, Crystal,
+        RehydratedContext, MycelialCluster, CultivationResult,
+        create_mycelial_network, seed_conversation
+    )
+
     __all__ = [
         # Main classes
         'GenieNexus', 'Troupe', 'Cascade',
@@ -87,6 +94,11 @@ try:
         # Memory
         'PSIPRouter', 'PrismaticMemoryStore',
         'Signature', 'PrismaticSpectrum', 'RainbowMemory',
+
+        # Mycelial Network (Distributed Memory)
+        'MycelialNetwork', 'SeedType', 'Seed', 'Sprout', 'Crystal',
+        'RehydratedContext', 'MycelialCluster', 'CultivationResult',
+        'create_mycelial_network', 'seed_conversation',
 
         # Configuration
         'NexusConfig', 'AgentDefinition',
